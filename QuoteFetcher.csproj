@@ -9,11 +9,15 @@
 
 	<ItemGroup>
 		<PackageReference Include="FluentAssertions" Version="8.2.0" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.12.1" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.4" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="9.0.4" />
 		<PackageReference Include="Moq" Version="4.20.72" />
+		<PackageReference Include="PuppeteerSharp" Version="15.2.0" />
+		<PackageReference Include="Selenium.Support" Version="4.31.0" />
+		<PackageReference Include="Selenium.WebDriver" Version="4.31.0" />
+		<PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="135.0.7049.11400" />
 		<PackageReference Include="Spectre.Console" Version="0.50.0" />
-		<PackageReference Include="Spectre.Console.Cli" Version="0.50.0" />
 		<PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
 	</ItemGroup>
 
