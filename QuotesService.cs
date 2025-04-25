@@ -10,7 +10,7 @@ namespace QuoteFetcher;
 public sealed class QuotesService
 {
     private readonly IHttpClientFactory _factory;
-    
+
     public QuotesService(IHttpClientFactory factory) => _factory = factory;
 
     public async IAsyncEnumerable<QuoteDto> GetAllQuotesAsync(
@@ -26,11 +26,12 @@ public sealed class QuotesService
 
         do
         {
+            QuoteDto[] pageQuotes;
+
             try
             {
-                var url = $"okurCekV2?id={user}&bolum=alintilar" +
-                         $"&sayfa={page}&kume={cluster}&z={z}" +
-                         "&appVersion=2.43.2&os=web&hl=tr";
+                // Use exact URL format as seen in Postman
+                var url = $"okurCekV2?id={user}&bolum=alintilar&sayfa={page}&kume={cluster}&z={z}&appVersion=2.43.2&os=web&hl=tr";
 
                 console.MarkupLine($"[grey]Fetching page {page}...[/]");
 
@@ -47,21 +48,8 @@ public sealed class QuotesService
 
                 console.MarkupLine($"[yellow]Page {page} of {payload.TotalPages}[/]");
 
-                foreach (var post in payload.Posts)
-                {
-                    if (post?.Alt?.Quote is null) continue;
-
-                    QuoteDto? dto = null;
-                    try
-                    {
-                        dto = ToDto(post.Alt.Quote);
-                    }
-                    catch (Exception ex)
-                    {
-                        console.MarkupLine($"[red]Error processing quote: {ex.Message}[/]");
-                    }
-
-                }
+                // Process quotes outside the try/catch
+                pageQuotes = ProcessQuotes(payload.Posts, console);
 
                 page++;
                 cluster = payload.Cluster;
@@ -82,8 +70,39 @@ public sealed class QuotesService
                 console.MarkupLine($"[red]Unexpected error: {ex.Message}[/]");
                 yield break;
             }
+
+            // Return quotes outside the try/catch
+            foreach (var quote in pageQuotes)
+            {
+                yield return quote;
+            }
         }
         while (payload is not null && page <= payload.TotalPages && !ct.IsCancellationRequested);
+    }
+
+    private QuoteDto[] ProcessQuotes(IReadOnlyList<Post> posts, IAnsiConsole console)
+    {
+        var result = new List<QuoteDto>();
+
+        foreach (var post in posts)
+        {
+            if (post?.Alt?.Quote is null) continue;
+
+            try
+            {
+                var dto = ToDto(post.Alt.Quote);
+                if (dto != null)
+                {
+                    result.Add(dto);
+                }
+            }
+            catch (Exception ex)
+            {
+                console.MarkupLine($"[red]Error processing quote: {ex.Message}[/]");
+            }
+        }
+
+        return result.ToArray();
     }
 
     private static QuoteDto? ToDto(Quote quote)
@@ -91,7 +110,7 @@ public sealed class QuotesService
         try
         {
             var parts = new List<string>();
-            
+
             if (quote.Parse.Raw.ValueKind == JsonValueKind.Array)
             {
                 foreach (var element in quote.Parse.Raw.EnumerateArray())
@@ -105,6 +124,14 @@ public sealed class QuotesService
                     {
                         parts.Add(item.GetString() ?? string.Empty);
                     }
+                }
+            }
+            else if (quote.Parse.Raw.ValueKind == JsonValueKind.Object)
+            {
+                // Handle case where Raw is an object instead of an array
+                if (quote.Parse.Raw.TryGetProperty("text", out var textElement))
+                {
+                    parts.Add(textElement.GetString() ?? string.Empty);
                 }
             }
 
