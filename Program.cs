@@ -20,7 +20,6 @@ class Program
 
         var chromeOptions = new ChromeOptions();
 
-        // Use a temporary clean user-data-dir to avoid profile conflicts
         string tempProfileDir = Path.Combine(Path.GetTempPath(), "selenium-chrome-profile");
         Console.WriteLine($"Using temporary profile directory: {tempProfileDir}");
         Directory.CreateDirectory(tempProfileDir);
@@ -61,19 +60,33 @@ class Program
             Thread.Sleep(3000);
 
             Console.WriteLine("Finding quote elements...");
-            var quoteElements = driver.FindElements(By.CssSelector("span.text-alt"));
-            if (quoteElements == null || quoteElements.Count == 0)
+            var quoteContainers = driver.FindElements(By.CssSelector("div.box.detail.alt"));
+            if (quoteContainers == null || quoteContainers.Count == 0)
             {
                 Console.WriteLine("No more quotes found. Exiting loop.");
                 break;
             }
 
-            Console.WriteLine($"Found {quoteElements.Count} quotes on page {currentPage}.");
-            foreach (var element in quoteElements)
+            Console.WriteLine($"Found {quoteContainers.Count} quotes on page {currentPage}.");
+            foreach (var container in quoteContainers)
             {
-                var quote = element.Text.Trim();
-                allQuotes.Add(new QuoteRecord(quote, "", ""));
-                Console.WriteLine($"Quote {allQuotes.Count}: {quote}");
+                try
+                {
+                    var quoteElement = container.FindElement(By.CssSelector(".text"));
+                    var bookElement = container.FindElement(By.CssSelector(".bookDetail a")).Text;
+                    var authorElement = container.FindElement(By.CssSelector(".bookDetail span[itemprop='author']")).Text;
+
+                    var quote = quoteElement.Text.Trim();
+                    var book = bookElement.Trim();
+                    var author = authorElement.Trim();
+
+                    allQuotes.Add(new QuoteRecord(quote, book, author));
+                    Console.WriteLine($"Quote {allQuotes.Count}: {quote} ({book} by {author})");
+                }
+                catch (NoSuchElementException)
+                {
+                    Console.WriteLine("Skipped an incomplete quote entry.");
+                }
             }
 
             currentPage++;
